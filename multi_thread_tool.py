@@ -855,7 +855,8 @@ class App(QWidget):
         if SUPER_EAGLE_USER == "your_username":
             return ""
         # 保存图片用于调试
-        debug_path = "/tmp/captcha_last.jpg"
+        import tempfile
+        debug_path = os.path.join(tempfile.gettempdir(), "captcha_last.jpg")
         with open(debug_path, "wb") as f:
             f.write(img_data)
         r = requests.post("https://upload.chaojiying.net/Upload/Processing.php",
