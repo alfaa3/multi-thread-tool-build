@@ -3,6 +3,7 @@
 
 import sys, os, time, random, csv, threading, re, base64
 from io import BytesIO
+from urllib.parse import quote
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from PyQt5.QtCore import Qt, QObject, pyqtSignal, QTimer
@@ -354,7 +355,7 @@ class App(QWidget):
         if self.cancel:
             return None, "已取消"
 
-        ts = time.strftime("a%20b%20c%20d%20%H:%M:%S", time.localtime())
+        ts = quote(time.strftime("%a %b %d %H:%M:%S", time.localtime()))
         cap = sess.get(f"https://www.xjyxjyw.com/image.jsp?date={ts}", timeout=15)
         if self.cancel:
             return None, "已取消"
@@ -716,7 +717,7 @@ class App(QWidget):
             return "已取消", "", ""
 
         # 2. 验证码
-        ts = time.strftime("a%20b%20c%20d%20%H:%M:%S", time.localtime())
+        ts = quote(time.strftime("%a %b %d %H:%M:%S", time.localtime()))
         cap = sess.get(f"https://www.xjyxjyw.com/image.jsp?date={ts}", timeout=15)
         if self.cancel:
             return "已取消", "", ""
