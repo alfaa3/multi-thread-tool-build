@@ -1,4 +1,3 @@
-# GitHub Actions: 编译 multi_thread_tool.py → Windows .exe
 name: Build EXE
 
 on:
@@ -9,32 +8,45 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+
+    env:
+      WINEPREFIX: ${{ github.workspace }}/wineprefix
+      WINEARCH: win64
+      DISPLAY: :99
+      PYTHON_DIR: ${{ github.workspace }}/wineprefix/drive_c/Python311
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Wine + Python
+      - name: Install Wine + xvfb
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-get update -qq
           sudo apt-get install -y -qq wine wine64 wine32 xvfb wget unzip 2>&1 | tail -3
+
+      - name: Init Wine
+        run: |
           wine wineboot --init 2>&1 | tail -2
 
       - name: Install Python (embeddable) + pip
         run: |
           wget -q https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip
-          mkdir -p /wine/drive_c/Python311
-          unzip -q python-3.11.9-embed-amd64.zip -d /wine/drive_c/Python311
+          mkdir -p "$PYTHON_DIR"
+          unzip -q python-3.11.9-embed-amd64.zip -d "$PYTHON_DIR"
           rm python-3.11.9-embed-amd64.zip
-          sed -i 's/^#import site/import site/' /wine/drive_c/Python311/python311._pth
+          sed -i 's/^#import site/import site/' "$PYTHON_DIR/python311._pth"
           wget -q https://bootstrap.pypa.io/get-pip.py
           Xvfb :99 -screen 0 1024x768x16 &>/dev/null &
-          sleep 1
-          DISPLAY=:99 wine /wine/drive_c/Python311/python.exe get-pip.py
+          sleep 2
+          DISPLAY=:99 wine "$PYTHON_DIR/python.exe" get-pip.py 2>&1
           rm get-pip.py
 
       - name: Install PyPI dependencies
         run: |
-          DISPLAY=:99 wine /wine/drive_c/Python311/python.exe -m pip install \
+          DISPLAY=:99 wine "$PYTHON_DIR/python.exe" -m pip install \
             pyinstaller==6.11.1 \
             PyQt5==5.15.11 \
             pyqt5-sip==12.17.0 \
@@ -46,14 +58,10 @@ jobs:
 
       - name: Compile to .exe
         run: |
-          DISPLAY=:99 wine /wine/drive_c/Python311/Scripts/pyinstaller.exe \
-            --onefile \
-            --windowed \
+          DISPLAY=:99 wine "$PYTHON_DIR/Scripts/pyinstaller.exe" \
+            --onefile --windowed \
             --name "multi_thread_tool" \
             --hidden-import PyQt5.sip \
-            --hidden-import PyQt5.QtCore \
-            --hidden-import PyQt5.QtGui \
-            --hidden-import PyQt5.QtWidgets \
             --hidden-import requests \
             --hidden-import openpyxl \
             --hidden-import xlrd \
