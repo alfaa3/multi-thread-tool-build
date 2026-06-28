@@ -1773,10 +1773,11 @@ class FuzzyImportTool(QMainWindow):
         dialog.setFixedSize(340, 420)
         layout = QVBoxLayout(dialog)
 
-        # 二维码
+        # 二维码区域：尝试显示二维码图片，失败则显示链接和"在浏览器打开"按钮
         qr_label = QLabel()
         qr_label.setAlignment(Qt.AlignCenter)
         qr_label.setMinimumSize(280, 280)
+        qr_ok = False
         try:
             import qrcode
             from io import BytesIO
@@ -1785,13 +1786,31 @@ class FuzzyImportTool(QMainWindow):
             buf = BytesIO()
             qr_img.save(buf, format="PNG")
             pixmap = QPixmap()
-            pixmap.loadFromData(buf.getvalue())
-            qr_label.setPixmap(pixmap.scaled(280, 280, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            if pixmap.loadFromData(buf.getvalue()):
+                qr_label.setPixmap(pixmap.scaled(280, 280, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                qr_ok = True
         except Exception:
-            qr_label.setText(f"二维码链接:\n{qr_url}")
+            pass
+
+        if not qr_ok:
+            qr_label.setText("请点击下方按钮在浏览器中打开支付页面")
+            qr_label.setStyleSheet("font-size: 12px; color: #666;")
         layout.addWidget(qr_label)
 
-        info = QLabel(f"订单: {out_trade_no[-8:]}\n请用微信扫码支付\n支付成功后自动申请学分")
+        # 浏览器打开按钮
+        btn_open = QPushButton("🌐 在浏览器中打开支付")
+        btn_open.setStyleSheet("""
+            QPushButton {
+                border: 1px solid #4a90d9; border-radius: 4px;
+                background-color: #4a90d9; color: white;
+                font-weight: bold; font-size: 12px; padding: 6px;
+            }
+            QPushButton:hover { background-color: #357abd; }
+        """)
+        btn_open.clicked.connect(lambda: __import__("webbrowser").open(qr_url))
+        layout.addWidget(btn_open)
+
+        info = QLabel(f"订单号: {out_trade_no[-8:]}\n微信扫码支付，支付后自动申请学分")
         info.setAlignment(Qt.AlignCenter)
         info.setStyleSheet("font-size: 12px; padding: 4px;")
         layout.addWidget(info)
