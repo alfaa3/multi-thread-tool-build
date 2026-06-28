@@ -1,78 +1,32 @@
 name: Build EXE
 
 on:
-  push:
-    branches: [ "main" ]
-  workflow_dispatch:
+  workflow_dispatch:  # 手动触发
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-
-    env:
-      WINEPREFIX: ${{ github.workspace }}/wineprefix
-      WINEARCH: win64
-      DISPLAY: :99
-      PYTHON_DIR: ${{ github.workspace }}/wineprefix/drive_c/Python311
+    runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Install Wine + xvfb
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
         run: |
-          sudo dpkg --add-architecture i386
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq wine wine64 wine32 xvfb wget unzip 2>&1 | tail -3
+          python -m pip install --upgrade pip
+          pip install PyQt5 requests beautifulsoup4 qrcode pyinstaller
 
-      - name: Init Wine
+      - name: Build EXE
         run: |
-          wine wineboot --init 2>&1 | tail -2
+          pyinstaller --onefile --windowed --name "模糊导入工具" fuzzy_import_tool.py
 
-      - name: Install Python (embeddable) + pip
-        run: |
-          wget -q https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip
-          mkdir -p "$PYTHON_DIR"
-          unzip -q python-3.11.9-embed-amd64.zip -d "$PYTHON_DIR"
-          rm python-3.11.9-embed-amd64.zip
-          sed -i 's/^#import site/import site/' "$PYTHON_DIR/python311._pth"
-          wget -q https://bootstrap.pypa.io/get-pip.py
-          Xvfb :99 -screen 0 1024x768x16 &>/dev/null &
-          sleep 2
-          DISPLAY=:99 wine "$PYTHON_DIR/python.exe" get-pip.py 2>&1
-          rm get-pip.py
-
-      - name: Install PyPI dependencies
-        run: |
-          DISPLAY=:99 wine "$PYTHON_DIR/python.exe" -m pip install \
-            pyinstaller==6.11.1 \
-            PyQt5==5.15.11 \
-            pyqt5-sip==12.17.0 \
-            requests==2.32.3 \
-            openpyxl==3.1.5 \
-            xlrd==2.0.1 \
-            qrcode==8.0 \
-            Pillow==11.1.0
-
-      - name: Compile to .exe
-        run: |
-          DISPLAY=:99 wine "$PYTHON_DIR/Scripts/pyinstaller.exe" \
-            --onefile --windowed \
-            --name "multi_thread_tool" \
-            --hidden-import PyQt5.sip \
-            --hidden-import requests \
-            --hidden-import openpyxl \
-            --hidden-import xlrd \
-            --hidden-import qrcode \
-            --hidden-import PIL \
-            --collect-all PyQt5 \
-            --noconfirm \
-            multi_thread_tool.py
-
-      - name: Upload artifact
+      - name: Upload EXE
         uses: actions/upload-artifact@v4
         with:
-          name: multi_thread_tool
-          path: dist/multi_thread_tool.exe
+          name: 模糊导入工具
+          path: dist/模糊导入工具.exe
